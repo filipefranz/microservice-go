@@ -1,9 +1,13 @@
-package createtrasaction
+package create_transaction
 
 import (
+	"context"
 	"testing"
 
 	"github.com/filipefranz/microservice-go/internal/entity"
+	"github.com/filipefranz/microservice-go/internal/event"
+	"github.com/filipefranz/microservice-go/internal/usecase/mocks"
+	"github.com/filipefranz/microservice-go/pkg/events"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -40,12 +44,8 @@ func TestCreateTransactionUseCaseExecute(t *testing.T) {
 	account2 := entity.NewAccount(client2)
 	account2.Credit(1000)
 
-	mockAccountGateway := &AccountGatewayMock{}
-	mockAccountGateway.On("FindById", account1.ID).Return(account1, nil)
-	mockAccountGateway.On("FindById", account2.ID).Return(account2, nil)
-
-	mockTransactionGateway := &TransactionGatewayMock{}
-	mockTransactionGateway.On("Create", mock.Anything).Return(nil)
+	mockUow := &mocks.UowMock{}
+	mockUow.On("Do", mock.Anything, mock.Anything).Return(nil)
 
 	inputDto := CreateTransactionInputDTO{
 		AccountIDFrom: account1.ID,
@@ -53,12 +53,15 @@ func TestCreateTransactionUseCaseExecute(t *testing.T) {
 		Amount:        100,
 	}
 
-	uc := NewCreateTransactionUseCase(mockTransactionGateway, mockAccountGateway)
-	outPut, err := uc.Execute(inputDto)
+	dispatcher := events.NewEventDispatcher()
+	eventTransaction := event.NewTransactionCreated()
+	eventBalance := event.NewBalanceUpdated()
+	ctx := context.Background()
+
+	uc := NewCreateTransactionUseCase(mockUow, dispatcher, eventTransaction, eventBalance)
+	outPut, err := uc.Execute(ctx, inputDto)
 	assert.Nil(t, err)
 	assert.NotNil(t, outPut)
-	mockAccountGateway.AssertExpectations(t)
-	mockAccountGateway.AssertNumberOfCalls(t, "FindById", 2)
-	mockTransactionGateway.AssertExpectations(t)
-	mockTransactionGateway.AssertNumberOfCalls(t, "Create", 1)
+	mockUow.AssertExpectations(t)
+	mockUow.AssertNumberOfCalls(t, "Do", 1)
 }

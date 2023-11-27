@@ -14,7 +14,7 @@ func NewTransactionDB(db *sql.DB) *TransactionDB {
 	return &TransactionDB{DB: db}
 }
 
-func (t *TransactionDB) Save(transaction *entity.Transaction) error {
+func (t *TransactionDB) Create(transaction *entity.Transaction) error {
 	stmt, err := t.DB.Prepare("INSERT INTO transactions(id, account_id_from, account_id_to, amount, created_at) VALUES(?, ?, ?, ?, ?)")
 	if err != nil {
 		return err
